@@ -1,41 +1,64 @@
 package Lesson3;
 
 import io.restassured.RestAssured;
-import io.restassured.path.json.JsonPath;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 public class RecipeTests {
-    @BeforeAll
-    static void setUP(){
+    ResponseSpecification responseSpecification = null;
+    RequestSpecification requestSpecification = null;
+    @BeforeEach
+    void beforeTest() {
+        responseSpecification = new ResponseSpecBuilder()
+                .expectStatusCode(200)
+                .expectStatusLine("HTTP/1.1 200 OK")
+                .expectContentType(ContentType.JSON)
+                .expectResponseTime(Matchers.lessThan(5000L))
+                .build();
+    }
+    @BeforeEach
+    void beforeRequest(){
+        requestSpecification = new RequestSpecBuilder()
+                .addQueryParam("apiKey", "62e8122bf46941569505d78f6d632a72")
+                .log(LogDetail.ALL)
+                .build();
+    }
+    @BeforeEach
+    void setUP(){
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     }
 
     @Test
-    void recepiesComplexSearch() {
-         JsonPath response = given()
-                .queryParam("apiKey", "62e8122bf46941569505d78f6d632a72")
-                .queryParam("query", "burger")
-                .when()
-                .get("https://api.spoonacular.com/recipes/complexSearch")
-                .body()
-                 .jsonPath();
-         assertThat(response.get("totalResults"), equalTo(54));
-         assertThat(response.get("results[0].id"), equalTo(642539));
-         assertThat(response.get("results[1].title"), equalTo("$50,000 Burger"));
-         assertThat(response.get("results[2].imageType"), equalTo("jpg"));
+    void recipesComplexSearch() {
+         given()
+                 .spec(requestSpecification)
+                 .queryParam("query", "burger")
+                 .expect()
+                 .body("totalResults", equalTo(54))
+                 .body("results[0].id", equalTo(642539))
+                 .body("results[1].title", equalTo("$50,000 Burger"))
+                 .body("results[2].imageType", equalTo("jpg"))
+                 .when()
+                 .get("https://api.spoonacular.com/recipes/complexSearch")
+                 .then()
+                 .spec(responseSpecification);
     }
 
     @Test
     void cuisineTestCase() {
         given()
-                .queryParam("apiKey", "62e8122bf46941569505d78f6d632a72")
+                .spec(requestSpecification)
                 .contentType("application/x-www-form-urlencoded")
                 .param("title", "sushi")
                 .expect()
@@ -46,9 +69,7 @@ public class RecipeTests {
                 .post("https://api.spoonacular.com/recipes/cuisine")
                 //.prettyPeek()
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
-
-
 
 }
